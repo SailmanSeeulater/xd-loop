@@ -34,12 +34,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // `xd-loop --diagnose` prints what idle mode can see from inside the app sandbox, then exits
         if CommandLine.arguments.contains("--diagnose") {
+            GlobalHotKey.register {}
             print(IdleController.diagnostics())
+            print("global hotkey: \(GlobalHotKey.label ?? "none (both taken)")")
             exit(0)
         }
 
         // Start dormant: just the menu bar icon, watching for the Mac to sit idle (IdleMode.swift)
         idle = IdleController(app: self)
+
+        // Cover from anywhere with Control + Option + ↓ (or with ⌘ added if another app has that; HotKey.swift)
+        GlobalHotKey.register { [weak self] in self?.startCover() }
 
         // A monitor was plugged in, unplugged, or rearranged: cover the new layout
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),

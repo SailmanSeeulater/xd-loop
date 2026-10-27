@@ -190,7 +190,13 @@ final class IdleController: NSObject, NSMenuDelegate {
             menu.addItem(info("    Lower the idle time, or raise “Turn display off” in System Settings."))
         }
         menu.addItem(.separator())
-        menu.addItem(action("Cover now", #selector(coverNow)))
+        let cover = action("Cover now", #selector(coverNow))
+        if GlobalHotKey.label != nil {
+            // Shows the global shortcut next to the item (and it works here too while the menu is open)
+            cover.keyEquivalent = String(Character(UnicodeScalar(NSDownArrowFunctionKey)!))
+            cover.keyEquivalentModifierMask = GlobalHotKey.modifiers
+        }
+        menu.addItem(cover)
         menu.addItem(.separator())
 
         let idleMenu = NSMenu()
@@ -244,6 +250,17 @@ final class IdleController: NSObject, NSMenuDelegate {
         }
         menu.addItem(submenu("React to music", audioMenu))
         menu.addItem(toggle("Mouse sparkles", state.mouseTrail, #selector(toggleMouseTrail)))
+
+        let shortcutMenu = NSMenu()
+        let plain = action("⌃⌥↓  Control + Option + Down", #selector(setShortcut(_:)), tag: 0)
+        plain.state = GlobalHotKey.label == "⌃⌥↓" ? .on : .off
+        let withCommand = action("⌃⌥⌘↓  Control + Option + Command + Down", #selector(setShortcut(_:)), tag: 1)
+        withCommand.state = GlobalHotKey.label == "⌃⌥⌘↓" ? .on : .off
+        shortcutMenu.addItem(plain)
+        shortcutMenu.addItem(withCommand)
+        shortcutMenu.addItem(.separator())
+        shortcutMenu.addItem(info("If ⌃⌥↓ moves windows instead (Rectangle), pick the other one."))
+        menu.addItem(submenu("Cover-now shortcut", shortcutMenu))
         menu.addItem(.separator())
 
         menu.addItem(toggle("Skip during video and calls", skipVideo, #selector(toggleSkipVideo)))
@@ -290,6 +307,7 @@ final class IdleController: NSObject, NSMenuDelegate {
     @objc private func setAwaySpeed(_ sender: NSMenuItem) { AppState.shared.awaySpeed = Double(sender.tag) }
     @objc private func setAutoCycle(_ sender: NSMenuItem) { AppState.shared.autoCycle = Double(sender.tag) }
     @objc private func toggleMouseTrail() { AppState.shared.mouseTrail.toggle() }
+    @objc private func setShortcut(_ sender: NSMenuItem) { GlobalHotKey.addsCommand = sender.tag == 1 }
 
     // Turning music reaction on asks for the microphone now, while you can see the prompt
     @objc private func setAudioStrength(_ sender: NSMenuItem) {
