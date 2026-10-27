@@ -111,7 +111,8 @@ final class AppState {
         if shaderMode {
             shaderIndex = Self.randomOther(than: shaderIndex, in: shaderPatterns.count)
         } else {
-            asciiIndex = Self.randomOther(than: asciiIndex, in: Self.asciiCount)
+            // Leave out the last pattern (Webcam) so the camera never switches on by surprise
+            asciiIndex = Self.randomOther(than: asciiIndex, in: Self.asciiCount - 1)
         }
     }
 
@@ -251,6 +252,21 @@ final class AsciiView: NSView {
     var isPaused = false {
         didSet {
             if oldValue && !isPaused { labelUntil = CACurrentMediaTime() + 2 }
+            if isPaused { setActive(false) }
+        }
+    }
+
+    // Which pattern has been told it's on screen (the Webcam pattern turns the camera on and off with this)
+    private var activeIndex: Int?
+
+    private func setActive(_ on: Bool) {
+        if let active = activeIndex, !on || active != current {
+            patterns[active].deactivate()
+            activeIndex = nil
+        }
+        if on && activeIndex == nil {
+            patterns[current].activate()
+            activeIndex = current
         }
     }
 
@@ -289,6 +305,7 @@ final class AsciiView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard window != nil else {
+            setActive(false)
             link?.invalidate()
             link = nil
             return
@@ -302,7 +319,10 @@ final class AsciiView: NSView {
     @objc private func tick(_ link: CADisplayLink) {
         let now = CACurrentMediaTime()
         defer { lastFrame = now }
-        guard !isPaused, !AppState.shared.displayAsleep else { return }
+        guard !isPaused, !AppState.shared.displayAsleep else {
+            setActive(false)
+            return
+        }
         let state = AppState.shared
 
         // 60 fps when plugged in, 30 on battery
@@ -321,6 +341,7 @@ final class AsciiView: NSView {
             labelUntil = CACurrentMediaTime() + 2
             loadPattern()
         }
+        setActive(true)
 
         let cols = Int(bounds.width / cellW) + 1
         let rows = Int(bounds.height / cellH) + 1

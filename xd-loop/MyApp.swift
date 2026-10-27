@@ -13,6 +13,11 @@ struct AsciiCoverApp: App {
     }
 }
 
+extension Notification.Name {
+    // A macOS permission prompt (e.g. the camera) is about to show (object: true) or has closed (false)
+    static let permissionPrompt = Notification.Name("permissionPrompt")
+}
+
 // Borderless windows can't receive key presses unless we allow it
 final class CoverWindow: NSWindow {
     override var canBecomeKey: Bool { true }
@@ -40,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),
                                                name: NSApplication.didChangeScreenParametersNotification,
                                                object: nil)
+
+        // Step the cover back while a permission prompt is showing, so you can see it
+        NotificationCenter.default.addObserver(self, selector: #selector(permissionPrompt(_:)),
+                                               name: .permissionPrompt, object: nil)
 
         // Check every few seconds whether we're on battery, to slow the animations down
         checkPower()
@@ -125,6 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 context.duration = 1
                 for w in fading { w.animator().alphaValue = 1 }
             }
+        }
+    }
+
+    @objc private func permissionPrompt(_ note: Notification) {
+        let showing = note.object as? Bool ?? false
+        for w in windows { w.level = showing ? .normal : .screenSaver }
+        if !showing && isCovering {
+            windows.first?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 

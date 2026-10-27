@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AVFoundation
 
 // MARK: - Writing coloured text, like a terminal
 
@@ -33,6 +34,10 @@ class TextPattern: Pattern {
     }
 
     func update(_ grid: inout Grid, t: Double) {}
+
+    // Declared here (not just in the protocol extension) so subclasses can override them
+    func activate() {}
+    func deactivate() {}
 
     // The cell value for one character in one colour
     func code(_ ch: Character, _ ink: Ink) -> UInt16 {
@@ -195,7 +200,7 @@ func highlightSwift(_ line: String) -> [Span] {
 
 func developerPatterns() -> [Pattern] {
     [CodeEditor(), GitLog(), ServerLogs(), Htop(), SortVisualizer(),
-     GitDiff(), KubePods(), Disassembly(), PackageInstall(), DirectoryTree()]
+     GitDiff(), KubePods(), Disassembly(), PackageInstall(), DirectoryTree(), WebcamPattern()]
 }
 
 // MARK: - The developer patterns
@@ -764,5 +769,69 @@ final class DirectoryTree: TextPattern {
         let branch = String(repeating: "│   ", count: d - 1) + (next < d ? "└── " : "├── ")
         if next > d { return [(branch, .gray), (pick(folders, Double(n) * 0.73) + "/", .blue)] }
         return [(branch, .gray), pick(files, Double(n) * 0.37)]
+    }
+}
+
+// 31. You, live from the webcam, in green characters. Brighter parts get denser characters.
+// The camera is only on while this pattern is on screen
+final class WebcamPattern: TextPattern {
+    private let shades = Array(" .:-=+*#%@")
+    private var isActive = false
+
+    init() { super.init(name: "Webcam") }
+
+    override func activate() {
+        isActive = true
+        switch CameraFeed.status {
+        case .authorized:
+            CameraFeed.shared.start()
+        case .notDetermined:
+            // macOS's permission prompt would be hidden under the cover, so the cover steps back while it's up
+            NotificationCenter.default.post(name: .permissionPrompt, object: true)
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                NotificationCenter.default.post(name: .permissionPrompt, object: false)
+                if granted && isActive { CameraFeed.shared.start() }
+            }
+        default:
+            break
+        }
+    }
+
+    override func deactivate() {
+        isActive = false
+        CameraFeed.shared.stop()
+    }
+
+    override func update(_ grid: inout Grid, t: Double) {
+        grid.clear()
+        guard let frame = CameraFeed.shared.latest else {
+            let blocked = CameraFeed.status == .denied || CameraFeed.status == .restricted
+            let lines = blocked ? ["Camera access is off.", "Allow xd-loop under Camera in Privacy & Security."]
+                                : ["Waiting for the camera..."]
+            for (i, line) in lines.enumerated() {
+                write(line, (grid.cols - line.count) / 2, grid.rows / 2 + i, .green, &grid)
+            }
+            return
+        }
+
+        // Stretch the contrast so a dim room still uses the whole range of characters
+        let lo = Double(frame.min() ?? 0), hi = Double(max(frame.max() ?? 255, (frame.min() ?? 0) + 1))
+
+        // Fill the screen, cropping the picture; a text cell is about twice as tall as it is wide
+        let camW = Double(CameraFeed.width), camH = Double(CameraFeed.height)
+        let scale = max(Double(grid.cols) / camW, Double(grid.rows) * 2 / camH)
+        let offsetX = (camW - Double(grid.cols) / scale) / 2
+        let offsetY = (camH - Double(grid.rows) * 2 / scale) / 2
+        let codes = shades.enumerated().map { i, ch in code(ch, i >= 8 ? .bright : .green) }
+
+        for row in 0..<grid.rows {
+            let sy = min(CameraFeed.height - 1, max(0, Int(offsetY + Double(row) * 2 / scale)))
+            for col in 0..<grid.cols {
+                let sx = min(CameraFeed.width - 1, max(0, Int(offsetX + Double(col) / scale)))
+                let v = (Double(frame[sy * CameraFeed.width + sx]) - lo) / (hi - lo)
+                grid.cells[row * grid.cols + col] = codes[min(shades.count - 1, max(0, Int(v * Double(shades.count))))]
+            }
+        }
     }
 }

@@ -32,6 +32,14 @@ protocol Pattern: AnyObject {
     var chars: [Character] { get }   // the first one should be a space
     func color(_ index: Int) -> CGColor
     func update(_ grid: inout Grid, t: Double)
+    func activate()     // the pattern just came on screen
+    func deactivate()   // the pattern just left the screen
+}
+
+// Most patterns don't care when they come and go
+extension Pattern {
+    func activate() {}
+    func deactivate() {}
 }
 
 // How many units fit across the screen; bigger = smaller, more repeated shapes
