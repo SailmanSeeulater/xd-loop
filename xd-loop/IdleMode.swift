@@ -181,6 +181,12 @@ final class IdleController: NSObject, NSMenuDelegate {
         statusItem.button?.image = image
     }
 
+    // The same menu, popped up at the mouse pointer instead of under the menu bar icon
+    func showMenuAtMouse() {
+        NSApp.activate(ignoringOtherApps: true)
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
     // Rebuilt every time the menu opens, so it always shows the current state
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()

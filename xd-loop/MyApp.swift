@@ -73,9 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // Opening xd-loop again while it's already running (Spotlight, Finder, Launchpad) covers right away
+    // Opening xd-loop again while it's already running (Spotlight, Finder, Launchpad) shows its menu at the
+    // mouse, in case the menu bar icon is hidden behind the notch. "Cover now" is the first item
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        startCover()
+        if !isCovering { idle?.showMenuAtMouse() }
         return false
     }
 
