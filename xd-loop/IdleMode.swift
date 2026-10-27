@@ -211,6 +211,21 @@ final class IdleController: NSObject, NSMenuDelegate {
         menu.addItem(submenu("Pause", pauseMenu))
         menu.addItem(.separator())
 
+        let state = AppState.shared
+        let awayMenu = NSMenu()
+        awayMenu.addItem(toggle("Show away messages", state.awayEnabled, #selector(toggleAway)))
+        let speedMenu = NSMenu()
+        for (title, speed) in [("Slow", 120), ("Normal", 220), ("Fast", 400)] {
+            let item = action(title, #selector(setAwaySpeed(_:)), tag: speed)
+            item.state = Int(state.awaySpeed) == speed ? .on : .off
+            speedMenu.addItem(item)
+        }
+        awayMenu.addItem(submenu("Speed", speedMenu))
+        awayMenu.addItem(.separator())
+        awayMenu.addItem(action("Edit messages…", #selector(editMessages)))
+        menu.addItem(submenu("Away messages", awayMenu))
+        menu.addItem(.separator())
+
         menu.addItem(toggle("Skip during video and calls", skipVideo, #selector(toggleSkipVideo)))
         menu.addItem(toggle("Skip during full-screen apps", skipFullScreen, #selector(toggleSkipFullScreen)))
         menu.addItem(.separator())
@@ -249,6 +264,44 @@ final class IdleController: NSObject, NSMenuDelegate {
         pausedUntil = nil
         lastUncovered = Date()   // start the idle count fresh
         refreshIcon()
+    }
+
+    @objc private func toggleAway() { AppState.shared.awayEnabled.toggle() }
+    @objc private func setAwaySpeed(_ sender: NSMenuItem) { AppState.shared.awaySpeed = Double(sender.tag) }
+
+    // A small window with one message per line
+    @objc private func editMessages() {
+        let text = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: 200))
+        text.string = AppState.shared.awayMessages.joined(separator: "\n")
+        text.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        text.isRichText = false
+        text.isAutomaticQuoteSubstitutionEnabled = false
+        text.autoresizingMask = .width
+        let scroll = NSScrollView(frame: text.frame)
+        scroll.documentView = text
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+
+        let alert = NSAlert()
+        alert.messageText = "Away messages"
+        alert.informativeText = "One message per line. A random one scrolls across the cover each time."
+        alert.accessoryView = scroll
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Reset to defaults")
+        alert.window.initialFirstResponder = text
+        NSApp.activate(ignoringOtherApps: true)
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            AppState.shared.awayMessages = text.string.split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+        case .alertThirdButtonReturn:
+            AppState.shared.awayMessages = AppState.defaultMessages
+        default:
+            break
+        }
     }
 
     @objc private func toggleSkipVideo() { skipVideo.toggle() }

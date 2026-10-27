@@ -50,12 +50,22 @@ final class AppState {
     // While the display is off (or the Mac is asleep) nothing is drawn (IdleController keeps this up to date)
     var displayAsleep = false
 
+    // Away messages: one at a time scrolls across the cover, picked at random (edited from the menu bar)
+    static let defaultMessages = ["XD rawrrr", "why you looking?", "I'll be back", "?", "??", "???",
+                                  "My name is Mr. Big Balls"]
+    var awayEnabled: Bool { didSet { saved.set(awayEnabled, forKey: "awayEnabled") } }
+    var awayMessages: [String] { didSet { saved.set(awayMessages, forKey: "awayMessages") } }
+    var awaySpeed: Double { didSet { saved.set(awaySpeed, forKey: "awaySpeed") } }   // points per second
+
     private init() {
         shaderMode = saved.bool(forKey: "shaderMode")
         shaderIndex = min(max(0, saved.integer(forKey: "shaderIndex")), shaderPatterns.count - 1)
         asciiIndex = min(max(0, saved.integer(forKey: "asciiIndex")), Self.asciiCount - 1)
         tintHue = saved.double(forKey: "tintHue")
         tintAmount = saved.double(forKey: "tintAmount")
+        awayEnabled = saved.object(forKey: "awayEnabled") as? Bool ?? true
+        awayMessages = saved.stringArray(forKey: "awayMessages") ?? Self.defaultMessages
+        awaySpeed = saved.object(forKey: "awaySpeed") as? Double ?? 220
     }
 
     var wheelOpen = false {
@@ -94,6 +104,11 @@ struct ContentView: View {
             AsciiRepresentable(paused: state.shaderMode)
             if state.shaderMode {
                 ShaderView(pattern: shaderPatterns[state.shaderIndex])
+            }
+            if state.awayEnabled && !state.awayMessages.isEmpty {
+                AwayBanner()
+            }
+            if state.shaderMode {
                 TimelineView(.periodic(from: .now, by: 0.25)) { timeline in
                     if timeline.date < state.labelUntil { label }
                 }
