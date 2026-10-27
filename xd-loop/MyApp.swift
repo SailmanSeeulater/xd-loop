@@ -118,14 +118,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // One borderless window per display, above everything else, on every Space
     private func buildWindows(fadeIn: Bool) {
         closeWindows()
-        windows = NSScreen.screens.map { screen in
+        windows = NSScreen.screens.enumerated().map { index, screen in
             let w = CoverWindow(contentRect: screen.frame, styleMask: .borderless,
                                 backing: .buffered, defer: false)
             w.isReleasedWhenClosed = false   // we keep our own reference, so close() mustn't free it too
             w.level = unlocking ? .normal : .screenSaver
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             w.backgroundColor = .black
-            w.contentView = NSHostingView(rootView: ContentView(screenFrame: screen.frame))
+            w.contentView = NSHostingView(rootView: ContentView(screenFrame: screen.frame, screenIndex: index))
             if fadeIn { w.alphaValue = 0 }
             w.makeKeyAndOrderFront(nil)
             return w

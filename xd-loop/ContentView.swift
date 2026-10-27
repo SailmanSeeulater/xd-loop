@@ -69,6 +69,9 @@ final class AppState {
     // Coloured sparks follow the mouse while covering
     var mouseTrail: Bool { didSet { saved.set(mouseTrail, forKey: "mouseTrail") } }
 
+    // Each extra monitor shows a different pattern (a few steps along from the main screen's)
+    var perScreen: Bool { didSet { saved.set(perScreen, forKey: "perScreen") } }
+
     private init() {
         shaderMode = saved.bool(forKey: "shaderMode")
         shaderIndex = min(max(0, saved.integer(forKey: "shaderIndex")), shaderPatterns.count - 1)
@@ -81,6 +84,7 @@ final class AppState {
         autoCycle = saved.double(forKey: "autoCycle")
         audioStrength = saved.double(forKey: "audioStrength")
         mouseTrail = saved.object(forKey: "mouseTrail") as? Bool ?? true
+        perScreen = saved.bool(forKey: "perScreen")
     }
 
     var wheelOpen = false {
@@ -129,13 +133,14 @@ final class AppState {
 
 struct ContentView: View {
     var screenFrame: CGRect = .zero   // which screen this cover is on, in macOS screen coordinates
+    var screenIndex = 0                // 0 for the main screen, 1, 2... for the others
     private let state = AppState.shared
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            AsciiRepresentable(paused: state.shaderMode)
+            AsciiRepresentable(paused: state.shaderMode, screenIndex: screenIndex)
             if state.shaderMode {
-                ShaderView(pattern: shaderPatterns[state.shaderIndex])
+                ShaderView(pattern: shaderPatterns[shaderIndex])
             }
             if state.mouseTrail {
                 MouseTrail(screenFrame: screenFrame)
@@ -155,9 +160,14 @@ struct ContentView: View {
         }
     }
 
+    // This screen's shader: the main one, or a few steps along on other screens
+    private var shaderIndex: Int {
+        (state.shaderIndex + (state.perScreen ? screenIndex * 4 : 0)) % shaderPatterns.count
+    }
+
     // Shows the shader's name for a moment after switching
     private var label: some View {
-        Text(" Shader \(state.shaderIndex + 1)/\(shaderPatterns.count)  \(shaderPatterns[state.shaderIndex].name)    ` next · ⇧` back · = colours · Tab ASCII ")
+        Text(" Shader \(shaderIndex + 1)/\(shaderPatterns.count)  \(shaderPatterns[shaderIndex].name)    ` next · ⇧` back · = colours · Tab ASCII ")
             .font(.system(size: 16, weight: .medium, design: .monospaced))
             .foregroundStyle(.white)
             .background(.black)
@@ -247,8 +257,13 @@ struct ColorWheel: View {
 // Lets SwiftUI show our AppKit AsciiView
 struct AsciiRepresentable: NSViewRepresentable {
     let paused: Bool
+    let screenIndex: Int
 
-    func makeNSView(context: Context) -> AsciiView { AsciiView(frame: .zero) }
+    func makeNSView(context: Context) -> AsciiView {
+        let view = AsciiView(frame: .zero)
+        view.screenIndex = screenIndex
+        return view
+    }
     func updateNSView(_ nsView: AsciiView, context: Context) { nsView.isPaused = paused }
 }
 
@@ -278,6 +293,7 @@ final class AsciiView: NSView {
         }
     }
 
+    var screenIndex = 0
     private let patterns = allPatterns()
     private var current = AppState.shared.asciiIndex
     private var onBattery: Bool?
@@ -342,7 +358,10 @@ final class AsciiView: NSView {
         }
 
         // ` was pressed (see MyApp.swift)
-        let wanted = state.asciiIndex % patterns.count
+        // Other screens are a few patterns along when "different pattern on each screen" is on,
+        // but never the Webcam (last), so the camera is only ever used once
+        var wanted = (state.asciiIndex + (state.perScreen ? screenIndex * 7 : 0)) % patterns.count
+        if screenIndex > 0 && wanted == patterns.count - 1 { wanted = 0 }
         if wanted != current {
             current = wanted
             grid.clear()

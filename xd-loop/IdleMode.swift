@@ -250,6 +250,7 @@ final class IdleController: NSObject, NSMenuDelegate {
         }
         menu.addItem(submenu("React to music", audioMenu))
         menu.addItem(toggle("Mouse sparkles", state.mouseTrail, #selector(toggleMouseTrail)))
+        menu.addItem(toggle("Different pattern on each screen", state.perScreen, #selector(togglePerScreen)))
 
         let shortcutMenu = NSMenu()
         let plain = action("⌃⌥↓  Control + Option + Down", #selector(setShortcut(_:)), tag: 0)
@@ -307,6 +308,7 @@ final class IdleController: NSObject, NSMenuDelegate {
     @objc private func setAwaySpeed(_ sender: NSMenuItem) { AppState.shared.awaySpeed = Double(sender.tag) }
     @objc private func setAutoCycle(_ sender: NSMenuItem) { AppState.shared.autoCycle = Double(sender.tag) }
     @objc private func toggleMouseTrail() { AppState.shared.mouseTrail.toggle() }
+    @objc private func togglePerScreen() { AppState.shared.perScreen.toggle() }
     @objc private func setShortcut(_ sender: NSMenuItem) { GlobalHotKey.addsCommand = sender.tag == 1 }
 
     // Turning music reaction on asks for the microphone now, while you can see the prompt
