@@ -243,6 +243,7 @@ final class IdleController: NSObject, NSMenuDelegate {
             audioMenu.addItem(item)
         }
         menu.addItem(submenu("React to music", audioMenu))
+        menu.addItem(toggle("Mouse sparkles", state.mouseTrail, #selector(toggleMouseTrail)))
         menu.addItem(.separator())
 
         menu.addItem(toggle("Skip during video and calls", skipVideo, #selector(toggleSkipVideo)))
@@ -288,6 +289,7 @@ final class IdleController: NSObject, NSMenuDelegate {
     @objc private func toggleAway() { AppState.shared.awayEnabled.toggle() }
     @objc private func setAwaySpeed(_ sender: NSMenuItem) { AppState.shared.awaySpeed = Double(sender.tag) }
     @objc private func setAutoCycle(_ sender: NSMenuItem) { AppState.shared.autoCycle = Double(sender.tag) }
+    @objc private func toggleMouseTrail() { AppState.shared.mouseTrail.toggle() }
 
     // Turning music reaction on asks for the microphone now, while you can see the prompt
     @objc private func setAudioStrength(_ sender: NSMenuItem) {

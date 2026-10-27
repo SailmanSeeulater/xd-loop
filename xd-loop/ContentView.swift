@@ -66,6 +66,9 @@ final class AppState {
     // The microphone's beat level scaled by the strength setting; 0 when audio reaction is off
     var audioPulse: Double { audioStrength > 0 ? AudioMeter.shared.level * audioStrength : 0 }
 
+    // Coloured sparks follow the mouse while covering
+    var mouseTrail: Bool { didSet { saved.set(mouseTrail, forKey: "mouseTrail") } }
+
     private init() {
         shaderMode = saved.bool(forKey: "shaderMode")
         shaderIndex = min(max(0, saved.integer(forKey: "shaderIndex")), shaderPatterns.count - 1)
@@ -77,6 +80,7 @@ final class AppState {
         awaySpeed = saved.object(forKey: "awaySpeed") as? Double ?? 220
         autoCycle = saved.double(forKey: "autoCycle")
         audioStrength = saved.double(forKey: "audioStrength")
+        mouseTrail = saved.object(forKey: "mouseTrail") as? Bool ?? true
     }
 
     var wheelOpen = false {
@@ -124,6 +128,7 @@ final class AppState {
 }
 
 struct ContentView: View {
+    var screenFrame: CGRect = .zero   // which screen this cover is on, in macOS screen coordinates
     private let state = AppState.shared
 
     var body: some View {
@@ -131,6 +136,9 @@ struct ContentView: View {
             AsciiRepresentable(paused: state.shaderMode)
             if state.shaderMode {
                 ShaderView(pattern: shaderPatterns[state.shaderIndex])
+            }
+            if state.mouseTrail {
+                MouseTrail(screenFrame: screenFrame)
             }
             if state.awayEnabled && !state.awayMessages.isEmpty {
                 AwayBanner()

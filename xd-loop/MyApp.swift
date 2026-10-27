@@ -120,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             w.level = unlocking ? .normal : .screenSaver
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             w.backgroundColor = .black
-            w.contentView = NSHostingView(rootView: ContentView())
+            w.contentView = NSHostingView(rootView: ContentView(screenFrame: screen.frame))
             if fadeIn { w.alphaValue = 0 }
             w.makeKeyAndOrderFront(nil)
             return w
