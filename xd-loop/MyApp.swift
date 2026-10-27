@@ -63,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func startCover() {
         guard !isCovering else { return }
         isCovering = true
+        NSApp.unhide(nil)   // endCover() hid the app; hidden apps can't show windows
         buildWindows(fadeIn: true)
         NSCursor.hide()
         // We're a background app asking to come to the front. ignoringOtherApps is deprecated,
@@ -76,16 +77,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard isCovering else { return }
         isCovering = false
         AppState.shared.wheelOpen = false
-        for w in windows { w.close() }
-        windows = []
+        closeWindows()
         NSCursor.unhide()
         NSApp.hide(nil)
         idle?.didUncover()
     }
 
+    // Taking the content out first matters: it tells each AsciiView it has left its window,
+    // which stops its display link. Otherwise the link keeps the view alive, drawing in the background
+    private func closeWindows() {
+        for w in windows {
+            w.contentView = nil
+            w.close()
+        }
+        windows = []
+    }
+
     // One borderless window per display, above everything else, on every Space
     private func buildWindows(fadeIn: Bool) {
-        for w in windows { w.close() }
+        closeWindows()
         windows = NSScreen.screens.map { screen in
             let w = CoverWindow(contentRect: screen.frame, styleMask: .borderless,
                                 backing: .buffered, defer: false)
