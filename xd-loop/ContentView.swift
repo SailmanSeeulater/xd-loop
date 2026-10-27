@@ -57,6 +57,9 @@ final class AppState {
     var awayMessages: [String] { didSet { saved.set(awayMessages, forKey: "awayMessages") } }
     var awaySpeed: Double { didSet { saved.set(awaySpeed, forKey: "awaySpeed") } }   // points per second
 
+    // While covering, jump to a random pattern every this many seconds (0 = off)
+    var autoCycle: Double { didSet { saved.set(autoCycle, forKey: "autoCycle") } }
+
     private init() {
         shaderMode = saved.bool(forKey: "shaderMode")
         shaderIndex = min(max(0, saved.integer(forKey: "shaderIndex")), shaderPatterns.count - 1)
@@ -66,6 +69,7 @@ final class AppState {
         awayEnabled = saved.object(forKey: "awayEnabled") as? Bool ?? true
         awayMessages = saved.stringArray(forKey: "awayMessages") ?? Self.defaultMessages
         awaySpeed = saved.object(forKey: "awaySpeed") as? Double ?? 220
+        autoCycle = saved.double(forKey: "autoCycle")
     }
 
     var wheelOpen = false {
@@ -93,6 +97,21 @@ final class AppState {
     // Each AsciiView notices the change and switches (and shows its own label)
     func stepAscii(_ step: Int) {
         asciiIndex = (asciiIndex + step + Self.asciiCount) % Self.asciiCount
+    }
+
+    // Auto-cycle: a different pattern at random, in whichever mode is showing
+    func randomPattern() {
+        if shaderMode {
+            shaderIndex = Self.randomOther(than: shaderIndex, in: shaderPatterns.count)
+        } else {
+            asciiIndex = Self.randomOther(than: asciiIndex, in: Self.asciiCount)
+        }
+    }
+
+    private static func randomOther(than current: Int, in count: Int) -> Int {
+        guard count > 1 else { return 0 }
+        let pick = Int.random(in: 0..<count - 1)
+        return pick >= current ? pick + 1 : pick
     }
 }
 

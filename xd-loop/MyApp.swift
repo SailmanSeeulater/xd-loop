@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var screenFrames: [CGRect] = []
     private var unlocking = false
     private var idle: IdleController?
+    private var lastPatternChange = Date()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // `xd-loop --diagnose` prints what idle mode can see from inside the app sandbox, then exits
@@ -45,6 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Timer.scheduledTimer(timeInterval: 5, target: self, selector: #selector(checkPower),
                              userInfo: nil, repeats: true)
 
+        // Auto-cycle checks once a second whether it's time for a new pattern
+        Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(autoCycle),
+                             userInfo: nil, repeats: true)
+
         // While covering, every key press comes here first and is swallowed so nothing else reacts.
         // While dormant, keys pass straight through
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -63,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func startCover() {
         guard !isCovering else { return }
         isCovering = true
+        lastPatternChange = Date()
         NSApp.unhide(nil)   // endCover() hid the app; hidden apps can't show windows
         buildWindows(fadeIn: true)
         NSCursor.hide()
@@ -126,6 +132,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildWindows(fadeIn: false)
     }
 
+    // A random new pattern every few seconds while covering, if auto-cycle is on.
+    // Pressing ` yourself restarts the countdown
+    @objc private func autoCycle() {
+        let state = AppState.shared
+        guard isCovering, state.autoCycle > 0, !state.wheelOpen,
+              Date().timeIntervalSince(lastPatternChange) >= state.autoCycle else { return }
+        lastPatternChange = Date()
+        state.randomPattern()
+    }
+
     @objc private func checkPower() {
         let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
         let source = IOPSGetProvidingPowerSourceType(info).takeUnretainedValue() as String
@@ -145,6 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case 50:   // the ` key, just below Esc; with Shift it goes backwards
             let step = event.modifierFlags.contains(.shift) ? -1 : 1
             if state.shaderMode { state.stepShader(step) } else { state.stepAscii(step) }
+            lastPatternChange = Date()
         case 48:   // Tab
             state.toggleMode()
         case 24:   // =

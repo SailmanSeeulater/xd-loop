@@ -224,6 +224,15 @@ final class IdleController: NSObject, NSMenuDelegate {
         awayMenu.addItem(.separator())
         awayMenu.addItem(action("Edit messages…", #selector(editMessages)))
         menu.addItem(submenu("Away messages", awayMenu))
+
+        let cycleMenu = NSMenu()
+        for (title, seconds) in [("Off", 0), ("Every 15 seconds", 15), ("Every 30 seconds", 30),
+                                 ("Every minute", 60), ("Every 2 minutes", 120)] {
+            let item = action(title, #selector(setAutoCycle(_:)), tag: seconds)
+            item.state = Int(state.autoCycle) == seconds ? .on : .off
+            cycleMenu.addItem(item)
+        }
+        menu.addItem(submenu("Auto-cycle patterns", cycleMenu))
         menu.addItem(.separator())
 
         menu.addItem(toggle("Skip during video and calls", skipVideo, #selector(toggleSkipVideo)))
@@ -268,6 +277,7 @@ final class IdleController: NSObject, NSMenuDelegate {
 
     @objc private func toggleAway() { AppState.shared.awayEnabled.toggle() }
     @objc private func setAwaySpeed(_ sender: NSMenuItem) { AppState.shared.awaySpeed = Double(sender.tag) }
+    @objc private func setAutoCycle(_ sender: NSMenuItem) { AppState.shared.autoCycle = Double(sender.tag) }
 
     // A small window with one message per line
     @objc private func editMessages() {
