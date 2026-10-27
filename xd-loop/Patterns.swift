@@ -40,6 +40,9 @@ let span = 32.0
 // Dark → bright
 let ramp = " .:-=+*#%@"
 
+// The microphone beat level (0 = silent), set by AsciiView every frame. Field patterns get denser on loud moments
+var audioPulse = 0.0
+
 func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> CGColor {
     CGColor(red: r, green: g, blue: b, alpha: 1)
 }
@@ -93,7 +96,7 @@ final class FieldPattern: Pattern {
                 let x = Double(col) * k - halfW
                 let spot = Spot(x: x, y: y, d: (x * x + 4 * y * y).squareRoot(), a: atan2(2 * y, x),
                                 t: t, halfW: halfW, halfH: halfH)
-                grid.cells[row * grid.cols + col] = level(value(spot), n)
+                grid.cells[row * grid.cols + col] = level(value(spot) + audioPulse * 0.35, n)
             }
         }
     }

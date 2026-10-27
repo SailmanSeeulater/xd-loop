@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // but it's still the only way to take the keyboard without a click, and the unlock keys need it
         NSApp.activate(ignoringOtherApps: true)
         idle?.refreshIcon()
+        if AppState.shared.audioStrength > 0 { AudioMeter.shared.start() }
     }
 
     // Back to dormant: windows gone, keyboard handed back to whatever you were using
@@ -84,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         isCovering = false
         AppState.shared.wheelOpen = false
         closeWindows()
+        AudioMeter.shared.stop()
         NSCursor.unhide()
         NSApp.hide(nil)
         idle?.didUncover()

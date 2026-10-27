@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import IOKit.pwr_mgt
 import ServiceManagement
 
@@ -233,6 +234,15 @@ final class IdleController: NSObject, NSMenuDelegate {
             cycleMenu.addItem(item)
         }
         menu.addItem(submenu("Auto-cycle patterns", cycleMenu))
+
+        // Strength is stored as a multiplier; the tag is that times 100
+        let audioMenu = NSMenu()
+        for (title, percent) in [("Off", 0), ("Subtle", 50), ("Normal", 100), ("Strong", 170), ("Wild", 260)] {
+            let item = action(title, #selector(setAudioStrength(_:)), tag: percent)
+            item.state = Int((state.audioStrength * 100).rounded()) == percent ? .on : .off
+            audioMenu.addItem(item)
+        }
+        menu.addItem(submenu("React to music", audioMenu))
         menu.addItem(.separator())
 
         menu.addItem(toggle("Skip during video and calls", skipVideo, #selector(toggleSkipVideo)))
@@ -278,6 +288,36 @@ final class IdleController: NSObject, NSMenuDelegate {
     @objc private func toggleAway() { AppState.shared.awayEnabled.toggle() }
     @objc private func setAwaySpeed(_ sender: NSMenuItem) { AppState.shared.awaySpeed = Double(sender.tag) }
     @objc private func setAutoCycle(_ sender: NSMenuItem) { AppState.shared.autoCycle = Double(sender.tag) }
+
+    // Turning music reaction on asks for the microphone now, while you can see the prompt
+    @objc private func setAudioStrength(_ sender: NSMenuItem) {
+        AppState.shared.audioStrength = Double(sender.tag) / 100
+        guard sender.tag > 0 else { return }
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .notDetermined:
+            NSApp.activate(ignoringOtherApps: true)
+            Task {
+                if !(await AVCaptureDevice.requestAccess(for: .audio)) { microphoneBlocked() }
+            }
+        case .denied, .restricted:
+            microphoneBlocked()
+        default:
+            break
+        }
+    }
+
+    private func microphoneBlocked() {
+        let alert = NSAlert()
+        alert.messageText = "xd-loop can't hear anything"
+        alert.informativeText = "Allow xd-loop under Microphone in Privacy & Security, then pick a strength again."
+        alert.addButton(withTitle: "Open Privacy & Security")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
+        }
+    }
 
     // A small window with one message per line
     @objc private func editMessages() {

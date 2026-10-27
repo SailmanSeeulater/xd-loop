@@ -129,10 +129,12 @@ static half4 rgb(float3 c) {
     return rgb(palette(v * 1.5 + p.d * 0.02, float3(0.5), float3(0.5), float3(1.0), float3(0.8, 0.9, 0.3)));
 }
 
-// Applied on top of every shader above: recolours it with the colour wheel's pick.
+// Applied on top of every shader above: recolours it with the colour wheel's pick. It also brightens on loud music when audio reaction is on.
 // It keeps the brightness of each pixel but swaps its colour; amount 0 = original, 1 = fully recoloured
-[[ stitchable ]] half4 tint(float2 pos, half4 color, half4 target, float amount) {
-    float lum = dot(float3(color.rgb), float3(0.299, 0.587, 0.114));
+[[ stitchable ]] half4 tint(float2 pos, half4 color, half4 target, float amount, float pulse) {
+    // pulse is the microphone beat level: loud moments flash brighter
+    float3 base = float3(color.rgb) * (1.0 + pulse * 0.7);
+    float lum = dot(base, float3(0.299, 0.587, 0.114));
     float3 recoloured = float3(target.rgb) * lum * 1.6 + pow(lum, 4.0) * 0.4;
-    return half4(half3(saturate(mix(float3(color.rgb), recoloured, amount))), 1.0);
+    return half4(half3(saturate(mix(base, recoloured, amount))), 1.0);
 }

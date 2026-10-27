@@ -60,6 +60,12 @@ final class AppState {
     // While covering, jump to a random pattern every this many seconds (0 = off)
     var autoCycle: Double { didSet { saved.set(autoCycle, forKey: "autoCycle") } }
 
+    // How strongly patterns react to sound from the microphone (0 = off, up to 2.6 = wild)
+    var audioStrength: Double { didSet { saved.set(audioStrength, forKey: "audioStrength") } }
+
+    // The microphone's beat level scaled by the strength setting; 0 when audio reaction is off
+    var audioPulse: Double { audioStrength > 0 ? AudioMeter.shared.level * audioStrength : 0 }
+
     private init() {
         shaderMode = saved.bool(forKey: "shaderMode")
         shaderIndex = min(max(0, saved.integer(forKey: "shaderIndex")), shaderPatterns.count - 1)
@@ -70,6 +76,7 @@ final class AppState {
         awayMessages = saved.stringArray(forKey: "awayMessages") ?? Self.defaultMessages
         awaySpeed = saved.object(forKey: "awaySpeed") as? Double ?? 220
         autoCycle = saved.double(forKey: "autoCycle")
+        audioStrength = saved.double(forKey: "audioStrength")
     }
 
     var wheelOpen = false {
@@ -160,12 +167,15 @@ struct ShaderView: View {
         // As fast as the screen refreshes, or 30 fps on battery; stopped while the display is off
         TimelineView(.animation(minimumInterval: state.onBattery ? 1.0 / 30 : nil, paused: state.displayAsleep)) { timeline in
             let t = timeline.date.timeIntervalSince(launchDate)
+            let pulse = state.audioPulse
             GeometryReader { geo in
                 Rectangle()
                     .fill(.black)
                     .colorEffect(ShaderFunction(library: .default, name: pattern.function)(
                         .float(t), .float2(geo.size)))
-                    .colorEffect(ShaderLibrary.tint(.color(state.tintColor), .float(state.tintAmount)))
+                    .colorEffect(ShaderLibrary.tint(.color(state.tintColor), .float(state.tintAmount), .float(pulse)))
+                    // A little zoom "thump" on loud moments
+                    .scaleEffect(1 + pulse * 0.05)
             }
         }
     }
@@ -248,7 +258,8 @@ final class AsciiView: NSView {
     private var current = AppState.shared.asciiIndex
     private var onBattery: Bool?
     private var grid = Grid()
-    private let start = CACurrentMediaTime()
+    private var patternTime = 0.0
+    private var lastFrame = CACurrentMediaTime()
     private var labelUntil: CFTimeInterval = 0
 
     private var cellW: CGFloat = 0
@@ -289,6 +300,8 @@ final class AsciiView: NSView {
     }
 
     @objc private func tick(_ link: CADisplayLink) {
+        let now = CACurrentMediaTime()
+        defer { lastFrame = now }
         guard !isPaused, !AppState.shared.displayAsleep else { return }
         let state = AppState.shared
 
@@ -314,7 +327,11 @@ final class AsciiView: NSView {
         if cols != grid.cols || rows != grid.rows {
             grid.resize(cols: cols, rows: rows)
         }
-        patterns[current].update(&grid, t: CACurrentMediaTime() - start)
+        // Loud moments speed time up and make field patterns denser
+        let pulse = state.audioPulse
+        audioPulse = pulse
+        patternTime += (now - lastFrame) * (1 + pulse * 1.5)
+        patterns[current].update(&grid, t: patternTime)
         needsDisplay = true
     }
 

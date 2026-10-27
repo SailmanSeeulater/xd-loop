@@ -258,6 +258,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "xd-loop listens to the microphone while the screen is covered so the patterns can move to music. Only the loudness is used, and no audio is recorded or sent anywhere.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -297,6 +299,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "xd-loop listens to the microphone while the screen is covered so the patterns can move to music. Only the loudness is used, and no audio is recorded or sent anywhere.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
